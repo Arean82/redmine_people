@@ -7,9 +7,8 @@ module Redmine
 
       module ClassMethods
         def acts_as_attachable_global(options = {})
-          has_many :attachments, options.merge(:as => :container,
-                                               :order => "#{Attachment.table_name}.created_on",
-                                               :dependent => :destroy)
+          has_many :attachments, -> {order 'created_on ASC'}, :as => :container,                                               
+                                               :dependent => :destroy
           send :include, Redmine::Acts::AttachableGlobal::InstanceMethods
           before_save :attach_saved_attachments
 

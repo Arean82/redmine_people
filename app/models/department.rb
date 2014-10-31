@@ -2,7 +2,7 @@ class Department < ActiveRecord::Base
   include Redmine::SafeAttributes
   unloadable
   belongs_to :head, :class_name => 'Person', :foreign_key => 'head_id'    
-  has_many :people, :uniq => true, :dependent => :nullify
+  has_many :people, -> { uniq }, :dependent => :nullify
 
   acts_as_nested_set :order => 'name', :dependent => :destroy
   acts_as_attachable_global
