@@ -8,16 +8,13 @@ class Person < User
 
   GENDERS = [[l(:label_people_male), 0], [l(:label_people_female), 1]]
 
-  scope :in_department, lambda {|department|
-    department_id = department.is_a?(Department) ? department.id : department.to_i
-    { :conditions => {:department_id => department_id, :type => "User"} }
-  }
-  scope :not_in_department, lambda {|department|
-    department_id = department.is_a?(Department) ? department.id : department.to_i
-    { :conditions => ["(#{User.table_name}.department_id != ?) OR (#{User.table_name}.department_id IS NULL)", department_id] }
-  }  
+  scope :in_department, -> (department) {where("department_id = ? and type = ?", process_department_id(department), "User")} 
 
-  scope :seach_by_name, lambda {|search| {:conditions =>   ["(LOWER(#{Person.table_name}.firstname) LIKE ? OR 
+  scope :not_in_department, -> (department) { where("(#{User.table_name}.department_id != ?) OR 
+                                                (#{User.table_name}.department_id IS NULL)", 
+                                              process_department_id(department))}
+
+  scope :seach_by_name, -> (search) {where("(LOWER(#{Person.table_name}.firstname) LIKE ? OR 
                                                                     LOWER(#{Person.table_name}.lastname) LIKE ? OR 
                                                                     LOWER(#{Person.table_name}.middlename) LIKE ? OR 
                                                                     LOWER(#{Person.table_name}.login) LIKE ? OR 
@@ -26,7 +23,7 @@ class Person < User
                                                                   search.downcase + "%",
                                                                   search.downcase + "%",
                                                                   search.downcase + "%",
-                                                                  search.downcase + "%"] }}
+                                                                  search.downcase + "%")}
 
   validates_uniqueness_of :firstname, :scope => [:lastname, :middlename]
 
@@ -44,6 +41,11 @@ class Person < User
                   'department_id',
                   'background',
                   'appearance_date'
+                  
+                  
+  def process_department_id(department)
+    department.is_a?(Department) ? department.id : department.to_i
+  end
 
 
   def phones                            
