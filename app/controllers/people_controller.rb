@@ -44,7 +44,7 @@ class PeopleController < ApplicationController
 
   def new
     @person = Person.new(:language => Setting.default_language, :mail_notification => Setting.default_notification_option, :department_id => params[:department_id])
-    @auth_sources = AuthSource.find(:all)
+    @auth_sources = AuthSource.all
     @departments = Department.all.sort
   end
 
@@ -94,7 +94,7 @@ class PeopleController < ApplicationController
         format.api  { render :action => 'show', :status => :created, :location => person_url(@person) }
       end
     else
-      @auth_sources = AuthSource.find(:all)
+      @auth_sources = AuthSource.all
       # Clear password input
       @person.password = @person.password_confirmation = nil
 
