@@ -29,7 +29,7 @@ class PeopleController < ApplicationController
     events = Redmine::Activity::Fetcher.new(User.current, :author => @person).events(nil, nil, :limit => 10)
     @events_by_day = events.group_by(&:event_date)
     @person_attachments = @person.attachments.select{|a| a != @person.avatar}
-    @memberships = @person.memberships.all(:conditions => Project.visible_condition(User.current))
+    @memberships = @person.memberships.where(Project.visible_condition(User.current))
     respond_to do |format|
       format.html
       format.vcf { send_data(person_to_vcard(@person), :filename => "#{@person.name}.vcf", :type => 'text/x-vcard;', :disposition => 'attachment') }
@@ -37,7 +37,7 @@ class PeopleController < ApplicationController
   end
 
   def edit
-    @auth_sources = AuthSource.find(:all)
+    @auth_sources = AuthSource.all
     @departments = Department.all.sort
     @membership ||= Member.new
   end
@@ -209,7 +209,7 @@ private
       @people_pages = Paginator.new(self, @people_count,  @limit, params[:page])
       @offset = @people_pages.current.offset
 
-      scope = scope.scoped :limit  => @limit, :offset => @offset
+      scope = scope.limit(@limit).offset(@offset)
       @people = scope
 
       fake_name = @people.first.name if @people.length > 0 #without this patch paging does not work
