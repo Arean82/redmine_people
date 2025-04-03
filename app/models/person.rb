@@ -8,24 +8,19 @@ class Person < User
 
   GENDERS = [[l(:label_people_male), 0], [l(:label_people_female), 1]]
 
-  scope :in_department, ->(department) { where("department_id = ? and type = ?", process_department_id(department), "User") } 
+  scope :in_department, ->(department) { where("department_id = ? AND type = ?", process_department_id(department), "User") } 
 
-  scope :not_in_department, ->(department) { where("(#{User.table_name}.department_id != ?) OR 
-                                                (#{User.table_name}.department_id IS NULL)", 
-                                              process_department_id(department))}
+  scope :not_in_department, ->(department) { where("(#{User.table_name}.department_id != ?) OR (#{User.table_name}.department_id IS NULL)", 
+                                                    process_department_id(department)) }
 
-  scope :seach_by_name, ->(search) { where("(LOWER(#{Person.table_name}.firstname) LIKE ? OR 
-                                                                    LOWER(#{Person.table_name}.lastname) LIKE ? OR 
-                                                                    LOWER(#{Person.table_name}.middlename) LIKE ? OR 
-                                                                    LOWER(#{Person.table_name}.login) LIKE ? OR 
-                                                                    LOWER(#{Person.table_name}.mail) LIKE ?)", 
-                                                                  search.downcase + "%",
-                                                                  search.downcase + "%",
-                                                                  search.downcase + "%",
-                                                                  search.downcase + "%",
-                                                                  search.downcase + "%") }
+  scope :search_by_name, ->(search) { where("LOWER(#{Person.table_name}.firstname) LIKE :q OR 
+                                             LOWER(#{Person.table_name}.lastname) LIKE :q OR 
+                                             LOWER(#{Person.table_name}.middlename) LIKE :q OR 
+                                             LOWER(#{Person.table_name}.login) LIKE :q OR 
+                                             LOWER(#{Person.table_name}.mail) LIKE :q", 
+                                             q: "#{search.downcase}%") }
 
-  validates_uniqueness_of :firstname, :scope => [:lastname, :middlename]
+  validates :firstname, uniqueness: { scope: [:lastname, :middlename] }
 
   safe_attributes 'phone', 
                   'address',
@@ -41,15 +36,9 @@ class Person < User
                   'department_id',
                   'background',
                   'appearance_date'
-                  
-                  
-  def process_department_id(department)
-    department.is_a?(Department) ? department.id : department.to_i
-  end
 
-
-  def phones                            
-    @phones || self.phone ? self.phone.split( /, */) : []
+  def phones
+    phone.present? ? phone.split(/, */) : []
   end  
 
   def type
@@ -57,7 +46,7 @@ class Person < User
   end
 
   def email
-    self.mail
+    mail
   end
 
   def project
@@ -66,35 +55,49 @@ class Person < User
 
   def next_birthday
     return if birthday.blank?
+
     year = Date.today.year
+    birthday_this_year = birthday.change(year: year)
+
+    if birthday_this_year < Date.today
+      year += 1
+    end
+
+    # Adjust for leap year if necessary
     mmdd = birthday.strftime('%m%d')
-    year += 1 if mmdd < Date.today.strftime('%m%d')
-    mmdd = '0301' if mmdd == '0229' && !Date.parse("#{year}0101").leap?
-    return Date.parse("#{year}#{mmdd}")
+    mmdd = '0301' if mmdd == '0229' && !Date.new(year).leap?
+
+    Date.parse("#{year}#{mmdd}")
   end
 
   def self.next_birthdays(limit = 10)
-    Person.where("users.birthday IS NOT NULL").sort_by(&:next_birthday).first(limit)
+    where.not(birthday: nil).sort_by(&:next_birthday).first(limit)
   end
 
   def age
     return nil if birthday.blank?
-    now = Time.now
-    age = now.year - birthday.year - (birthday.to_time.change(:year => now.year) > now ? 1 : 0)
+
+    now = Time.current
+    age = now.year - birthday.year
+    age -= 1 if birthday.change(year: now.year) > now
+    age
   end
 
   def editable_by?(usr, prj=nil)
-    true    
-    # usr && (usr.allowed_to?(:edit_people, prj) || (self.author == usr && usr.allowed_to?(:edit_own_invoices, prj))) 
-    # usr && usr.logged? && (usr.allowed_to?(:edit_notes, project) || (self.author == usr && usr.allowed_to?(:edit_own_notes, project)))
+    usr && (usr.allowed_to?(:edit_people, prj) || (self == usr && usr.allowed_to?(:edit_own_profile, prj)))
   end
 
-  def visible?(usr=nil)
+  def visible?(usr = nil)
     true
   end
 
-  def attachments_visible?(user=User.current)
+  def attachments_visible?(user = User.current)
     true
   end
-      
+
+  private
+
+  def self.process_department_id(department)
+    department.is_a?(Department) ? department.id : department.to_i
+  end
 end
