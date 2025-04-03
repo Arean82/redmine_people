@@ -1,16 +1,14 @@
-class CreateDepartments < ActiveRecord::Migration
+class CreateDepartments < ActiveRecord::Migration[6.1]
   def change
     create_table :departments do |t|
-      t.integer   :parent_id, :default => nil
-      t.integer   :lft, :default => nil
-      t.integer   :rgt, :default => nil
-      t.string    :name
-      t.text      :background
-      t.integer   :head_id
+      t.references :parent, index: true, foreign_key: { to_table: :departments }, null: true
+      t.integer    :lft, index: true
+      t.integer    :rgt, index: true
+      t.string     :name, null: false
+      t.text       :background
+      t.references :head, index: true, foreign_key: { to_table: :people }, null: true
+      
       t.timestamps
     end
-    add_index :departments, [:parent_id, :lft, :rgt]
-    add_index :departments, :head_id
   end
-
 end
