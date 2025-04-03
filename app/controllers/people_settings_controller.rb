@@ -1,10 +1,7 @@
 class PeopleSettingsController < ApplicationController
-  unloadable
-  menu_item :people_settings
-
   layout 'admin'
-  before_filter :require_admin
-  before_filter :find_acl, :only => [:index]
+  before_action :require_admin
+  before_action :find_acl, only: [:index]
 
   helper :departments
   helper :people
@@ -14,45 +11,46 @@ class PeopleSettingsController < ApplicationController
   end
 
   def update
-    settings = Setting.plugin_redmine_people
-    settings = {} if !settings.is_a?(Hash)
-    settings.merge!(params[:settings])
+    settings = Setting.plugin_redmine_people || {}
+    settings.merge!(params[:settings]) if params[:settings].is_a?(Hash)
     Setting.plugin_redmine_people = settings
     flash[:notice] = l(:notice_successful_update)
-    redirect_to :action => 'index', :tab => params[:tab]
+    redirect_to action: 'index', tab: params[:tab]
   end
 
   def destroy
-    PeopleAcl.delete(params[:id])
+    PeopleAcl.find_by(id: params[:id])&.destroy
     find_acl
     respond_to do |format|
-      format.html { redirect_to :controller => 'people_settings', :action => 'index'}
+      format.html { redirect_to controller: 'people_settings', action: 'index' }
       format.js
     end
   end
 
   def autocomplete_for_user
-    @principals = Principal.where(:status => [Principal::STATUS_ACTIVE, Principal::STATUS_ANONYMOUS]).like(params[:q]).all(:limit => 100, :order => 'type, login, lastname ASC')
-    render :layout => false
+    @principals = Principal.where(status: [Principal::STATUS_ACTIVE, Principal::STATUS_ANONYMOUS])
+                           .where("login ILIKE :q OR lastname ILIKE :q", q: "%#{params[:q]}%")
+                           .limit(100)
+                           .order(:type, :login, :lastname)
+    render layout: false
   end
 
   def create
-    user_ids = params[:user_ids]
-    acls = params[:acls]
+    user_ids = params[:user_ids] || []
+    acls = params[:acls] || []
     user_ids.each do |user_id|
-      PeopleAcl.create(user_id, acls)
+      PeopleAcl.create(user_id: user_id, acls: acls)
     end
     find_acl
     respond_to do |format|
-      format.html { redirect_to :controller => 'people_settings', :action => 'index', :tab => 'acl'}
+      format.html { redirect_to controller: 'people_settings', action: 'index', tab: 'acl' }
       format.js
     end
   end
 
-private
+  private
 
   def find_acl
     @users_acl = PeopleAcl.all
   end
-
 end
