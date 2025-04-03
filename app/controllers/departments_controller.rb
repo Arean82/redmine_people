@@ -1,9 +1,7 @@
 class DepartmentsController < ApplicationController
-  unloadable
-
-  before_filter :find_department, :except => [:index, :create, :new]
-  before_filter :require_admin, :only => [:destroy, :new, :create]
-  before_filter :authorize_people, :only => [:update, :edit, :add_people, :remove_person]
+  before_action :find_department, except: [:index, :create, :new]
+  before_action :require_admin, only: [:destroy, :new, :create]
+  before_action :authorize_people, only: [:update, :edit, :add_people, :remove_person]
 
   helper :attachments
 
@@ -26,12 +24,12 @@ class DepartmentsController < ApplicationController
 
     if @department.save 
       respond_to do |format| 
-        format.html { redirect_to :action => "show", :id => @department } 
+        format.html { redirect_to action: "show", id: @department } 
         format.api  { head :ok }
       end
     else
       respond_to do |format|
-        format.html { render :action => 'edit' }
+        format.html { render action: 'edit' }
         format.api  { render_validation_errors(@department) }
       end      
     end    
@@ -41,13 +39,12 @@ class DepartmentsController < ApplicationController
     if @department.destroy
       flash[:notice] = l(:notice_successful_delete)
       respond_to do |format|
-        format.html { redirect_to :controller => "people_settings", :action => "index", :tab => "departments" } 
+        format.html { redirect_to controller: "people_settings", action: "index", tab: "departments" } 
         format.api { render_api_ok }
       end      
     else
       flash[:error] = l(:notice_unsuccessful_save)
     end
-
   end  
 
   def create
@@ -56,23 +53,22 @@ class DepartmentsController < ApplicationController
 
     if @department.save 
       respond_to do |format| 
-        format.html { redirect_to :action => "show", :id => @department } 
-        # format.html { redirect_to :controller => "people_settings", :action => "index", :tab => "departments" } 
+        format.html { redirect_to action: "show", id: @department } 
         format.api  { head :ok }
       end
     else
       respond_to do |format|
-        format.html { render :action => 'new' }
+        format.html { render action: 'new' }
         format.api  { render_validation_errors(@department) }
       end      
     end
   end  
 
   def add_people
-    @people = Person.find_all_by_id(params[:person_id] || params[:person_ids])
+    @people = Person.where(id: params[:person_id] || params[:person_ids])
     @department.people << @people if request.post?
     respond_to do |format|
-      format.html { redirect_to :controller => 'departments', :action => 'edit', :id => @department, :tab => 'people' }
+      format.html { redirect_to controller: 'departments', action: 'edit', id: @department, tab: 'people' }
       format.js
       format.api { render_api_ok }
     end
@@ -81,16 +77,15 @@ class DepartmentsController < ApplicationController
   def remove_person
     @department.people.delete(Person.find(params[:person_id])) if request.delete?
     respond_to do |format|
-      format.html { redirect_to :controller => 'departments', :action => 'edit', :id => @department, :tab => 'people' }
+      format.html { redirect_to controller: 'departments', action: 'edit', id: @department, tab: 'people' }
       format.js
       format.api { render_api_ok }
     end
   end
 
-
   def autocomplete_for_person
-    @people = Person.active.where(:type => 'User').not_in_department(@department).like(params[:q]).all(:limit => 100)
-    render :layout => false
+    @people = Person.active.where(type: 'User').not_in_department(@department).like(params[:q]).limit(100)
+    render layout: false
   end  
 
 private
@@ -120,5 +115,4 @@ private
       deny_access  
     end
   end  
-
 end
